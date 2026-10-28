@@ -51,7 +51,7 @@ You need Xcode or the Xcode Command Line Tools on macOS 13 or later.
 
 ```sh
 git clone https://github.com/rav4nn/quick-space-switch
-cd QuickSpaceSwitch
+cd quick-space-switch
 ./dist/build.sh
 open ./build/QuickSpaceSwitch.app
 ```
