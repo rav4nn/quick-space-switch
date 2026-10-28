@@ -31,9 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   func applicationDidFinishLaunching(_ notification: Notification) {
     ensureAccessibilityPermission()
 
-    if UserDefaults.standard.bool(forKey: "swipeOverride") {
-      iss_set_swipe_override(true)
-    }
+    iss_set_swipe_override(UserDefaults.standard.object(forKey: "swipeOverride") as? Bool ?? true)
 
     iss_set_shortcut_override(UserDefaults.standard.object(forKey: "shortcutOverride") as? Bool ?? true)
 

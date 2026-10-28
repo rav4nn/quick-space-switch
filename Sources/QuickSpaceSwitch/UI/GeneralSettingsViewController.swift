@@ -128,7 +128,7 @@ final class GeneralSettingsViewController: NSViewController {
     showOSDInMissionControlCheckbox.state = defaults.bool(forKey: "showOSDInMissionControl") ? .on : .off
 
     hideMenuBarIconCheckbox.state = defaults.bool(forKey: "hideMenuBarIcon") ? .on : .off
-    swipeOverrideCheckbox.state = defaults.bool(forKey: "swipeOverride") ? .on : .off
+    swipeOverrideCheckbox.state = defaults.object(forKey: "swipeOverride") as? Bool ?? true ? .on : .off
     shortcutOverrideCheckbox.state = defaults.object(forKey: "shortcutOverride") as? Bool ?? true ? .on : .off
 
     let animationSpeedValue = defaults.double(forKey: "gestureSpeed")
