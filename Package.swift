@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "InstantSpaceSwitcher",
+    name: "QuickSpaceSwitch",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "InstantSpaceSwitcher", targets: ["InstantSpaceSwitcher"]),
-        .executable(name: "ISSCli", targets: ["ISSCli"])
+        .executable(name: "QuickSpaceSwitch", targets: ["QuickSpaceSwitch"]),
+        .executable(name: "QSSCli", targets: ["QSSCli"])
     ],
     targets: [
         .target(
@@ -19,17 +19,17 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "InstantSpaceSwitcher",
+            name: "QuickSpaceSwitch",
             dependencies: ["ISS"]
         ),
         .executableTarget(
-            name: "ISSCli",
+            name: "QSSCli",
             dependencies: ["ISS"],
-            path: "Sources/ISSCli"
+            path: "Sources/QSSCli"
         ),
         .testTarget(
             name: "ISSTests",
-            dependencies: ["ISS", "InstantSpaceSwitcher"]
+            dependencies: ["ISS", "QuickSpaceSwitch"]
         )
     ]
 )

@@ -1,7 +1,7 @@
 import AppKit
 
 @main
-class InstantSpaceSwitcherApp {
+class QuickSpaceSwitchApp {
   static func main() {
     let app = NSApplication.shared
     let delegate = AppDelegate()

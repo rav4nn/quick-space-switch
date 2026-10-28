@@ -11,7 +11,7 @@ static void print_usage(const char *progName) {
 
 int main(int argc, char **argv) {
     if (!iss_init()) {
-        fprintf(stderr, "Failed to initialize ISS (event tap). Check accessibility and input monitoring permissions.\n");
+        fprintf(stderr, "Failed to initialize Quick Space Switch (event tap). Check accessibility and input monitoring permissions.\n");
         return 1;
     }
 

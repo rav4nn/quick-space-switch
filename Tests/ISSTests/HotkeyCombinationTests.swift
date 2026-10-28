@@ -1,6 +1,6 @@
 import AppKit
 import Carbon
-@testable import InstantSpaceSwitcher
+@testable import QuickSpaceSwitch
 import XCTest
 
 final class HotkeyCombinationTests: XCTestCase {
