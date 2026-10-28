@@ -5,6 +5,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CGEventTypes.h>
 #include <assert.h>
+#include <dispatch/dispatch.h>
 #include <dlfcn.h>
 #include <float.h>
 #include <mach/mach_time.h>
@@ -69,6 +70,31 @@ static bool overlayDetectionEnabled = false;
 static bool swipeOverrideEnabled = false;
 static bool swipeTracking = false;
 static bool swipeFired = false;
+
+// Shortcut override state
+static bool shortcutOverrideEnabled = false;
+
+typedef struct {
+    CGKeyCode keycode;
+    CGEventFlags modifiers;
+    ISSDirection direction;
+} ISSInstantShortcut;
+
+// Only these modifiers decide a match; Fn, numeric pad, caps lock and
+// device-side bits ride along on arrow keys and on Logi Options+ events
+static const CGEventFlags kShortcutModifierMask =
+    kCGEventFlagMaskControl | kCGEventFlagMaskShift |
+    kCGEventFlagMaskAlternate | kCGEventFlagMaskCommand;
+
+static const ISSInstantShortcut kInstantShortcuts[] = {
+    { 123, kCGEventFlagMaskControl, ISSDirectionLeft },
+    { 124, kCGEventFlagMaskControl, ISSDirectionRight },
+};
+
+// Keycodes whose keyDown we swallowed, so their keyUp is swallowed too even
+// when Control is released first
+#define ISS_KEYCODE_LIMIT 128
+static bool swallowedKeyDown[ISS_KEYCODE_LIMIT];
 
 // Our macOS 27 swipes re-enter the tap with sourcePid == 0, so count them out instead
 static unsigned int syntheticEventsToPassThrough = 0;
@@ -158,6 +184,48 @@ static void swipe_override_switch(ISSDirection dir) {
     }
 }
 
+bool iss_shortcut_direction(uint16_t keycode, uint64_t flags, ISSDirection *outDirection) {
+    const CGEventFlags modifiers = (CGEventFlags)flags & kShortcutModifierMask;
+    for (size_t i = 0; i < sizeof(kInstantShortcuts) / sizeof(kInstantShortcuts[0]); i++) {
+        if (kInstantShortcuts[i].keycode == keycode && kInstantShortcuts[i].modifiers == modifiers) {
+            *outDirection = kInstantShortcuts[i].direction;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Decides synchronously and defers the switch, so a key event never waits on
+// space lookups or event posting
+static CGEventRef handle_key_event(CGEventType type, CGEventRef event) {
+    const CGKeyCode keycode =
+        (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+    if (keycode >= ISS_KEYCODE_LIMIT) return event;
+
+    if (type == kCGEventKeyUp) {
+        if (!swallowedKeyDown[keycode]) return event;
+        swallowedKeyDown[keycode] = false;
+        return NULL;
+    }
+
+    ISSDirection direction;
+    if (!shortcutOverrideEnabled ||
+        !iss_shortcut_direction(keycode, CGEventGetFlags(event), &direction)) {
+        // A fresh press ends any earlier one whose keyUp we never saw
+        swallowedKeyDown[keycode] = false;
+        return event;
+    }
+
+    swallowedKeyDown[keycode] = true;
+    // Holding the keys would otherwise race through spaces faster than the Dock settles
+    if (!CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat)) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            swipe_override_switch(direction);
+        });
+    }
+    return NULL;
+}
+
 static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
                                    CGEventRef event, void *refcon) {
     (void)proxy;
@@ -168,7 +236,12 @@ static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
         if (globalTap && AXIsProcessTrusted()) CGEventTapEnable(globalTap, true);
         // Anything we posted while disabled never reaches us, so stop waiting for it
         syntheticEventsToPassThrough = 0;
+        memset(swallowedKeyDown, 0, sizeof(swallowedKeyDown));
         return event;
+    }
+
+    if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
+        return handle_key_event(type, event);
     }
 
     CGSEventType eventType =
@@ -692,8 +765,11 @@ bool iss_init(void) {
         predictionsDict = CFDictionaryCreateMutable(NULL, 0, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     }
 
-    CGEventMask mask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp)
-        | (1ULL << kCGSEventGesture) | (1ULL << kCGSEventDockControl);
+    // Without the shortcut override the tap never sees a key, so it cannot hold one up
+    CGEventMask mask = (1ULL << kCGSEventGesture) | (1ULL << kCGSEventDockControl);
+    if (shortcutOverrideEnabled) {
+        mask |= CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
+    }
     globalTap = CGEventTapCreate(
         kCGSessionEventTap,
         kCGHeadInsertEventTap,
@@ -727,6 +803,7 @@ bool iss_init(void) {
 
 void iss_destroy(void) {
     syntheticEventsToPassThrough = 0;
+    memset(swallowedKeyDown, 0, sizeof(swallowedKeyDown));
     if (!globalTap) {
         return;
     }
@@ -834,6 +911,16 @@ void iss_set_swipe_override(bool enabled) {
     if (!enabled) {
         swipeTracking = false;
         swipeFired = false;
+    }
+}
+
+void iss_set_shortcut_override(bool enabled) {
+    if (shortcutOverrideEnabled == enabled) return;
+    shortcutOverrideEnabled = enabled;
+    // The event mask is fixed at creation, so rebuild an installed tap
+    if (globalTap) {
+        iss_destroy();
+        iss_init();
     }
 }
 

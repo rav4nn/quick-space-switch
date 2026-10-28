@@ -13,6 +13,9 @@ final class GeneralSettingsViewController: NSViewController {
     checkboxWithTitle: "Show on-screen display in Mission Control", target: nil, action: nil)
   private let swipeOverrideCheckbox = NSButton(
     checkboxWithTitle: "Override swipe gesture", target: nil, action: nil)
+  private let shortcutOverrideCheckbox = NSButton(
+    checkboxWithTitle: "Make Control+Arrow switching instant (Logitech gestures and keyboard)",
+    target: nil, action: nil)
   private let animationSpeedPopup = NSPopUpButton()
   private let animationSpeedLabel = NSTextField(labelWithString: "Animation Speed:")
   private let launchAtLoginCheckbox = NSButton(
@@ -53,6 +56,8 @@ final class GeneralSettingsViewController: NSViewController {
     showOSDInMissionControlCheckbox.action = #selector(showOSDInMissionControlChanged)
     swipeOverrideCheckbox.target = self
     swipeOverrideCheckbox.action = #selector(swipeOverrideChanged)
+    shortcutOverrideCheckbox.target = self
+    shortcutOverrideCheckbox.action = #selector(shortcutOverrideChanged)
     animationSpeedPopup.target = self
     animationSpeedPopup.action = #selector(animationSpeedChanged)
     launchAtLoginCheckbox.target = self
@@ -69,6 +74,7 @@ final class GeneralSettingsViewController: NSViewController {
     formView.addRow(label: systemLabel, control: launchAtLoginCheckbox)
     formView.addRow(label: nil, control: hideMenuBarIconCheckbox)
     formView.addRow(label: nil, control: swipeOverrideCheckbox)
+    formView.addRow(label: nil, control: shortcutOverrideCheckbox)
 
     let experimentalTitle = NSMutableAttributedString(string: "Enable Mission Control/Exposé detection\n")
     let sublabel = NSAttributedString(
@@ -123,6 +129,7 @@ final class GeneralSettingsViewController: NSViewController {
 
     hideMenuBarIconCheckbox.state = defaults.bool(forKey: "hideMenuBarIcon") ? .on : .off
     swipeOverrideCheckbox.state = defaults.bool(forKey: "swipeOverride") ? .on : .off
+    shortcutOverrideCheckbox.state = defaults.object(forKey: "shortcutOverride") as? Bool ?? true ? .on : .off
 
     let animationSpeedValue = defaults.double(forKey: "gestureSpeed")
     if animationSpeedValue > 0 {
@@ -169,6 +176,12 @@ final class GeneralSettingsViewController: NSViewController {
     let isEnabled = sender.state == .on
     defaults.set(isEnabled, forKey: "swipeOverride")
     iss_set_swipe_override(isEnabled)
+  }
+
+  @objc private func shortcutOverrideChanged(_ sender: NSButton) {
+    let isEnabled = sender.state == .on
+    defaults.set(isEnabled, forKey: "shortcutOverride")
+    iss_set_shortcut_override(isEnabled)
   }
 
   @objc private func animationSpeedChanged(_ sender: NSPopUpButton) {

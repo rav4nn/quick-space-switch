@@ -78,6 +78,18 @@ bool iss_switch_to_index(unsigned int targetIndex);
 void iss_set_swipe_override(bool enabled);
 
 /**
+ * @brief Enables or disables instant Control+Left/Right Arrow switching.
+ *
+ * When enabled, the tap swallows a keyDown of Left or Right Arrow whose only
+ * command modifier is Control (Logi Options+ desktop gestures post exactly
+ * this), plus its matching keyUp, and switches instantly instead of letting
+ * the system shortcut animate. When disabled, the tap does not listen to
+ * keyboard events at all. Rebuilds an installed tap.
+ * @param enabled true to intercept, false to let the system handle the keys.
+ */
+void iss_set_shortcut_override(bool enabled);
+
+/**
  * @brief Callback invoked after any successful space switch.
  * @param newSpaceIndex Zero-based index of the space that was switched to.
  */
