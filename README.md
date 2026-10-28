@@ -20,7 +20,7 @@ With "Make Control+Arrow switching instant (Logitech gestures and keyboard)" tur
 
 ## Install
 
-1. Download the latest `QuickSpaceSwitch-<version>.dmg` from [GitHub Releases](https://github.com/rav4nn/QuickSpaceSwitch/releases).
+1. Download the latest `QuickSpaceSwitch-<version>.dmg` from [GitHub Releases](https://github.com/rav4nn/quick-space-switch/releases).
 2. Open the DMG and drag Quick Space Switch to the Applications folder.
 3. Open Quick Space Switch from the Applications folder.
 4. When macOS asks, allow Quick Space Switch in System Settings > Privacy & Security > Accessibility.
@@ -50,7 +50,7 @@ The terminal app that runs `QSSCli` needs the Accessibility permission.
 You need Xcode or the Xcode Command Line Tools on macOS 13 or later.
 
 ```sh
-git clone https://github.com/rav4nn/QuickSpaceSwitch
+git clone https://github.com/rav4nn/quick-space-switch
 cd QuickSpaceSwitch
 ./dist/build.sh
 open ./build/QuickSpaceSwitch.app
