@@ -9,7 +9,10 @@ for arg in "$@"; do
     --clean) CLEAN=true ;;
     --debug) BUILD_CONFIG="debug" ;;
     --help)
-      echo "Usage: $0 [--clean] [--debug] [--help]"
+      echo "Usage: [SIGN=<identity>] $0 [--clean] [--debug] [--help]"
+      echo ""
+      echo "SIGN defaults to - (ad-hoc). A Developer ID identity adds the hardened runtime"
+      echo "and a secure timestamp, which notarization requires."
       echo ""
       echo "Options:"
       echo "  --clean    Delete build directory before building"
@@ -94,9 +97,18 @@ echo "Injecting git SHA: ${GIT_SHA}"
 /usr/libexec/PlistBuddy -c "Add :GitCommitHash string ${GIT_SHA}" "${APP_BUNDLE}/Contents/Info.plist" 2>/dev/null || \
 /usr/libexec/PlistBuddy -c "Set :GitCommitHash ${GIT_SHA}" "${APP_BUNDLE}/Contents/Info.plist"
 
+SIGN="${SIGN:--}"
+if [[ "${SIGN}" == "-" ]]; then
+  CODESIGN=(codesign --force --sign -)
+else
+  CODESIGN=(codesign --force --sign "${SIGN}" --options runtime --timestamp)
+fi
+
 echo ""
-echo "Signing (ad-hoc)..."
-codesign --force --deep --sign - "${APP_BUNDLE}"
+echo "Signing with ${SIGN}..."
+# Nested code first: signing the app seals the CLI's signature into the bundle
+"${CODESIGN[@]}" --identifier com.rav4nn.QuickSpaceSwitch.cli "${APP_BUNDLE}/Contents/MacOS/QSSCli"
+"${CODESIGN[@]}" "${APP_BUNDLE}"
 
 echo ""
 echo "App bundled at $(pwd)/${APP_BUNDLE} (${BUILD_CONFIG})"

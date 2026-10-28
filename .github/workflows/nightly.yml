@@ -18,9 +18,6 @@ jobs:
           chmod +x dist/build.sh
           ./dist/build.sh
 
-      - name: Install create-dmg
-        run: brew install create-dmg
-
       - name: Create DMG
         run: |
           chmod +x dist/deploy-to-dmg.sh

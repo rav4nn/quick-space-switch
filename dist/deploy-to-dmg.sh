@@ -1,38 +1,31 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 PRODUCT_NAME="QuickSpaceSwitch"
+VOLUME_NAME="Quick Space Switch"
 BUILD_DIR="build"
 APP_BUNDLE="${BUILD_DIR}/${PRODUCT_NAME}.app"
+SIGN="${SIGN:--}"
 
-# Extract version from Info.plist
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Info.plist 2>/dev/null || echo "unknown")
 DMG_NAME="${BUILD_DIR}/${PRODUCT_NAME}-${VERSION}.dmg"
 
-# Check if create-dmg is installed
-if ! command -v create-dmg &> /dev/null; then
-  echo "Error: create-dmg not found. Install with: brew install create-dmg"
+if [[ ! -d "${APP_BUNDLE}" ]]; then
+  echo "Error: ${APP_BUNDLE} not found. Run dist/build.sh first."
   exit 1
 fi
 
-# Check if app bundle exists
-if [ ! -d "${APP_BUNDLE}" ]; then
-  echo "Error: ${APP_BUNDLE} not found. Run build.sh first."
-  exit 1
-fi
+STAGE=$(mktemp -d)
+trap 'rm -rf "${STAGE}"' EXIT
+cp -R "${APP_BUNDLE}" "${STAGE}/"
+ln -s /Applications "${STAGE}/Applications"
 
 echo "Creating DMG..."
-rm -f "${DMG_NAME}"
+hdiutil create -volname "${VOLUME_NAME}" -srcfolder "${STAGE}" \
+  -fs HFS+ -format UDZO -imagekey zlib-level=9 -ov "${DMG_NAME}" >/dev/null
 
-create-dmg \
-  --volname "${PRODUCT_NAME}" \
-  --window-pos 200 120 \
-  --window-size 600 400 \
-  --icon-size 100 \
-  --icon "${PRODUCT_NAME}.app" 175 190 \
-  --hide-extension "${PRODUCT_NAME}.app" \
-  --app-drop-link 425 190 \
-  "${DMG_NAME}" \
-  "${APP_BUNDLE}"
+if [[ "${SIGN}" != "-" ]]; then
+  codesign --force --sign "${SIGN}" --timestamp "${DMG_NAME}"
+fi
 
 echo "DMG created at $(pwd)/${DMG_NAME}"
