@@ -68,7 +68,16 @@ final class KeyboardShortcutsViewController: NSViewController {
       title: "Reset All to Defaults", target: self, action: #selector(resetAllShortcuts))
     resetAllButton.translatesAutoresizingMaskIntoConstraints = false
 
+    let enableAllButton = NSButton(
+      title: "Enable All", target: self, action: #selector(enableAllShortcuts))
+    let disableAllButton = NSButton(
+      title: "Disable All", target: self, action: #selector(disableAllShortcuts))
+    let toggleAllStack = NSStackView(views: [enableAllButton, disableAllButton])
+    toggleAllStack.spacing = 8
+    toggleAllStack.translatesAutoresizingMaskIntoConstraints = false
+
     view.addSubview(scrollView)
+    view.addSubview(toggleAllStack)
     view.addSubview(resetAllButton)
 
     NSLayoutConstraint.activate([
@@ -76,6 +85,9 @@ final class KeyboardShortcutsViewController: NSViewController {
       scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
       scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
       scrollView.bottomAnchor.constraint(equalTo: resetAllButton.topAnchor, constant: -12),
+
+      toggleAllStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+      toggleAllStack.centerYAnchor.constraint(equalTo: resetAllButton.centerYAnchor),
 
       resetAllButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
       resetAllButton.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -20),
@@ -255,6 +267,14 @@ extension KeyboardShortcutsViewController: NSTableViewDelegate {
 
   @objc private func resetAllShortcuts() {
     store.resetToDefaults()
+  }
+
+  @objc private func enableAllShortcuts() {
+    store.setAllEnabled(true)
+  }
+
+  @objc private func disableAllShortcuts() {
+    store.setAllEnabled(false)
   }
 
   @objc private func toggleEnabled(_ sender: NSButton) {

@@ -407,7 +407,7 @@ final class HotkeyStore: ObservableObject {
 
     for identifier in HotkeyIdentifier.allCases {
       let key = "enabled.\(identifier.rawValue)"
-      enabledStates[identifier] = defaults.object(forKey: key) as? Bool ?? true
+      enabledStates[identifier] = defaults.object(forKey: key) as? Bool ?? false
     }
   }
 
@@ -559,13 +559,22 @@ final class HotkeyStore: ObservableObject {
   }
 
   func isEnabled(_ identifier: HotkeyIdentifier) -> Bool {
-    return enabledStates[identifier] ?? true
+    return enabledStates[identifier] ?? false
   }
 
   func setEnabled(_ enabled: Bool, for identifier: HotkeyIdentifier) {
     enabledStates[identifier] = enabled
     let key = "enabled.\(identifier.rawValue)"
     defaults.set(enabled, forKey: key)
+  }
+
+  func setAllEnabled(_ enabled: Bool) {
+    var states = enabledStates
+    for identifier in HotkeyIdentifier.allCases {
+      states[identifier] = enabled
+      defaults.set(enabled, forKey: "enabled.\(identifier.rawValue)")
+    }
+    enabledStates = states
   }
 
   private enum DefaultsKey: String {
