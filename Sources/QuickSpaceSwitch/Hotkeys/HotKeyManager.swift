@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import Carbon
 
 class HotKeyManager {
@@ -13,11 +14,8 @@ class HotKeyManager {
   private var entries: [HotkeyIdentifier: Entry] = [:]
   private var eventTap: CFMachPort?
   private var runLoopSource: CFRunLoopSource?
-  private var retryScheduled = false
 
-  private init() {
-    installEventTap()
-  }
+  private init() {}
 
   func register(
     identifier: HotkeyIdentifier, combination: HotkeyCombination, handler: @escaping () -> Void
@@ -25,7 +23,6 @@ class HotKeyManager {
     unregister(identifier: identifier)
 
     entries[identifier] = Entry(identifier: identifier, combination: combination, handler: handler)
-    installEventTap()
   }
 
   func unregister(identifier: HotkeyIdentifier) {
@@ -36,13 +33,13 @@ class HotKeyManager {
     entries.removeAll()
   }
 
-  private func installEventTap() {
+  /// Idempotent. EventTapGate calls this only while the app is trusted.
+  func installEventTap() {
     if let eventTap {
       if CFMachPortIsValid(eventTap) {
         return
       }
-      self.eventTap = nil
-      runLoopSource = nil
+      removeEventTap()
     }
 
     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
@@ -57,7 +54,7 @@ class HotKeyManager {
           let manager = Unmanaged<HotKeyManager>.fromOpaque(userInfo).takeUnretainedValue()
 
           if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let eventTap = manager.eventTap {
+            if let eventTap = manager.eventTap, AXIsProcessTrusted() {
               CGEvent.tapEnable(tap: eventTap, enable: true)
             }
             return Unmanaged.passUnretained(event)
@@ -75,12 +72,9 @@ class HotKeyManager {
         userInfo: Unmanaged.passUnretained(self).toOpaque()
       )
     else {
-      print("Failed to install hotkey event tap")
-      scheduleEventTapRetry()
       return
     }
 
-    retryScheduled = false
     self.eventTap = eventTap
     runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
     if let runLoopSource {
@@ -89,14 +83,16 @@ class HotKeyManager {
     CGEvent.tapEnable(tap: eventTap, enable: true)
   }
 
-  private func scheduleEventTapRetry() {
-    guard !retryScheduled else { return }
-    retryScheduled = true
-
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-      guard let self else { return }
-      self.retryScheduled = false
-      self.installEventTap()
+  /// Idempotent.
+  func removeEventTap() {
+    if let eventTap {
+      CGEvent.tapEnable(tap: eventTap, enable: false)
+      CFMachPortInvalidate(eventTap)
+      self.eventTap = nil
+    }
+    if let runLoopSource {
+      CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+      self.runLoopSource = nil
     }
   }
 

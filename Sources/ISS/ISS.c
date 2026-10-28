@@ -163,9 +163,9 @@ static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
     (void)proxy;
     (void)refcon;
 
-    // Re-enable if the system disabled our tap for being too slow
     if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
-        if (globalTap) CGEventTapEnable(globalTap, true);
+        // Re-enabling a tap after Accessibility trust is gone holds up every key press
+        if (globalTap && AXIsProcessTrusted()) CGEventTapEnable(globalTap, true);
         // Anything we posted while disabled never reaches us, so stop waiting for it
         syntheticEventsToPassThrough = 0;
         return event;
@@ -727,24 +727,22 @@ bool iss_init(void) {
 
 void iss_destroy(void) {
     syntheticEventsToPassThrough = 0;
-    if (predictionsDict) {
-        CFRelease(predictionsDict);
-        predictionsDict = NULL;
+    if (!globalTap) {
+        return;
     }
-    if (globalTap) {
-        CFNotificationCenterRemoveObserver(CFNotificationCenterGetDistributedCenter(),
-                                           &naturalScrolling,
-                                           CFSTR("SwipeScrollDirectionDidChangeNotification"),
-                                           NULL);
-        CGEventTapEnable(globalTap, false);
-        if (globalSource) {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), globalSource, kCFRunLoopCommonModes);
-            CFRelease(globalSource);
-            globalSource = NULL;
-        }
-        CFRelease(globalTap);
-        globalTap = NULL;
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDistributedCenter(),
+                                       &naturalScrolling,
+                                       CFSTR("SwipeScrollDirectionDidChangeNotification"),
+                                       NULL);
+    CGEventTapEnable(globalTap, false);
+    CFMachPortInvalidate(globalTap);
+    if (globalSource) {
+        CFRunLoopRemoveSource(CFRunLoopGetMain(), globalSource, kCFRunLoopCommonModes);
+        CFRelease(globalSource);
+        globalSource = NULL;
     }
+    CFRelease(globalTap);
+    globalTap = NULL;
 }
 
 bool iss_get_space_info(ISSSpaceInfo *info) {

@@ -7,6 +7,7 @@ import ISS
 final class AppDelegate: NSObject, NSApplicationDelegate {
   private let menuBarController = MenuBarController()
   private let hotkeyStore = HotkeyStore.shared
+  private let eventTapGate = EventTapGate()
   private lazy var preferencesWindowController = PreferencesWindowController()
   private var currentSpaceIndex: UInt32?
   private var lastSpaceIndex: UInt32?
@@ -29,11 +30,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     ensureAccessibilityPermission()
-
-    if !iss_init() {
-      print("Failed to initialize ISS event tap")
-      retryIssInit()
-    }
 
     if UserDefaults.standard.bool(forKey: "swipeOverride") {
       iss_set_swipe_override(true)
@@ -63,22 +59,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     bindHotkeys()
+    eventTapGate.start()
     observeSpaceChanges()
     observeAppActivation()
     refreshSpaceInfo()
   }
 
   func applicationWillTerminate(_ notification: Notification) {
-    iss_destroy()
+    eventTapGate.stop()
     stopObservingSpaceChanges()
     stopObservingAppActivation()
-  }
-
-  private func retryIssInit() {
-    guard !iss_init() else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-      self?.retryIssInit()
-    }
   }
 
   private func ensureAccessibilityPermission() {

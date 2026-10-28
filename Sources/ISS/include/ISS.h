@@ -4,12 +4,17 @@
 #include <stdbool.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-/** @brief Initialize resources
- * @return true on success, false on failure
+/** @brief Installs the event tap on the main run loop. Safe to call repeatedly.
+ * @return true when the tap is installed, false when macOS refused it
+ * (for example, without Accessibility trust)
  */
 bool iss_init(void);
 
-/** @brief Clean up resources */
+/** @brief Removes the event tap. Safe to call repeatedly.
+ *
+ * Call this as soon as Accessibility trust is lost: a key-intercepting tap
+ * that outlives its trust stalls keyboard input for the whole session.
+ */
 void iss_destroy(void);
 
 /** @brief The direction to switch spaces towards */
